@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VoteSecure AI — Real-time election results and statistics">
+    <title>VoteSecure AI — Election Results</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        .results-hero {
+            text-align: center;
+            padding: 48px 24px 32px;
+        }
+        .results-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        .winner-banner {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .winner-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(34, 197, 94, 0.05) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        .winner-crown {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .winner-name {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--success-400);
+        }
+        .winner-party {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .winner-votes {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin-top: 12px;
+        }
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--danger-400);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--danger-400);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="/" class="navbar-brand">
+                <span class="brand-icon">🛡️</span>
+                VoteSecure AI
+            </a>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/results" class="active">Results</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <span id="liveTag" class="live-indicator hidden"><span class="live-dot"></span> Live</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container" style="padding-bottom: 60px;">
+        <div class="results-hero">
+            <h1>Election Results</h1>
+            <p class="page-subtitle">Real-time voting statistics and analytics</p>
+            <div class="mt-24">
+                <select class="form-control" style="width:auto;min-width:320px;display:inline-block" id="electionPicker" onchange="loadResults()">
+                    <option value="">— Select an Election —</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="resultsContent">
+            <div class="empty-state" style="padding:80px 24px">
+                <div class="empty-icon">📊</div>
+                <div class="empty-title">Select an election to view results</div>
+                <div class="empty-text">Choose from the dropdown above to see real-time voting data</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        let doughnutChart = null;
+        let barChart = null;
+        let refreshInterval = null;
+
+        // Load elections on page load
+        async function init() {
+            try {
+                // Try authenticated endpoint first, fall back
+                let elections;
+                if (api.isLoggedIn()) {
+                    elections = await api.getAllElections();
+                } else {
+                    // Redirect to login if not authenticated
+                    window.location.href = '/';
+                    return;
+                }
+
+                const picker = document.getElementById('electionPicker');
+                elections.forEach(e => {
+                    const status = e.status === 'ongoing' ? '🟢' : e.status === 'ended' ? '🔴' : '🟡';
+                    picker.innerHTML += `<option value="${e.id}">${status} ${escapeHtml(e.title)}</option>`;
+                });
+            } catch (err) {
+                window.location.href = '/';
+            }
+        }
+
+        async function loadResults() {
+            const electionId = document.getElementById('electionPicker').value;
+            const container = document.getElementById('resultsContent');
+
+            if (!electionId) {
+                container.innerHTML = `<div class="empty-state" style="padding:80px"><div class="empty-icon">📊</div><div class="empty-title">Select an election</div></div>`;
+                if (refreshInterval) clearInterval(refreshInterval);
+                return;
+            }
+
+            container.innerHTML = '<div class="flex-center" style="padding:80px"><span class="spinner-lg spinner"></span></div>';
+
+            try {
+                const data = await api.getResults(electionId);
+                const { election, results } = data;
+
+                // Show live indicator if ongoing
+                const liveTag = document.getElementById('liveTag');
+                if (election.is_ongoing) {
+                    liveTag.classList.remove('hidden');
+                    // Auto-refresh every 10 seconds
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    refreshInterval = setInterval(() => loadResults(), 10000);
+                } else {
+                    liveTag.classList.add('hidden');
+                    if (refreshInterval) clearInterval(refreshInterval);
+                }
+
+                const winner = results.length > 0 ? results[0] : null;
+                const colors = [
+                    { bg: 'rgba(99, 102, 241, 0.7)', border: 'rgb(99, 102, 241)' },
+                    { bg: 'rgba(34, 197, 94, 0.7)', border: 'rgb(34, 197, 94)' },
+                    { bg: 'rgba(245, 158, 11, 0.7)', border: 'rgb(245, 158, 11)' },
+                    { bg: 'rgba(239, 68, 68, 0.7)', border: 'rgb(239, 68, 68)' },
+                    { bg: 'rgba(6, 182, 212, 0.7)', border: 'rgb(6, 182, 212)' },
+                    { bg: 'rgba(139, 92, 246, 0.7)', border: 'rgb(139, 92, 246)' },
+                    { bg: 'rgba(236, 72, 153, 0.7)', border: 'rgb(236, 72, 153)' },
+                    { bg: 'rgba(16, 185, 129, 0.7)', border: 'rgb(16, 185, 129)' }
+                ];
+
+                container.innerHTML = `
+                    <!-- Winner Banner -->
+                    ${winner && election.total_votes > 0 ? `
+                        <div class="winner-banner animate-bounce-in">
+                            <div class="winner-crown">👑</div>
+                            <div class="winner-name">${escapeHtml(winner.name)}</div>
+                            <div class="winner-party">${escapeHtml(winner.party || 'Independent')}</div>
+                            <div class="winner-votes">${winner.votes} votes (${winner.percentage}%)</div>
+                            <div class="text-muted mt-8" style="font-size:0.8125rem">
+                                ${election.is_ongoing ? 'Currently leading' : 'Winner'}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Stats Row -->
+                    <div class="grid-4 stagger mb-24">
+                        <div class="card stat-card">
+                            <div class="stat-icon primary">🗳️</div>
+                            <div class="stat-value">${election.total_votes}</div>
+                            <div class="stat-label">Total Votes</div>
+                            <div class="stat-glow primary"></div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon success">👥</div>
+                            <div class="stat-value">${election.total_voters}</div>
+                            <div class="stat-label">Eligible Voters</div>
+                            <div class="stat-glow success"></div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon accent">📈</div>
+                            <div class="stat-value">${election.turnout}%</div>
+                            <div class="stat-label">Voter Turnout</div>
+                            <div class="stat-glow accent"></div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon warning">📅</div>
+                            <div class="stat-value">${election.is_ongoing ? 'Live' : 'Ended'}</div>
+                            <div class="stat-label">Status</div>
+                            <div class="stat-glow warning"></div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="grid-2 mb-24">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">📊 Vote Distribution</h3></div>
+                            <div class="card-body" style="height:320px">
+                                <canvas id="doughnutChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">📶 Candidate Comparison</h3></div>
+                            <div class="card-body" style="height:320px">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📋 Detailed Breakdown</h3>
+                            <span class="text-muted" style="font-size:0.8125rem">${formatDate(election.start_date)} — ${formatDate(election.end_date)}</span>
+                        </div>
+                        <div class="card-body">
+                            ${results.map((r, i) => `
+                                <div class="result-item animate-slide-up" style="animation-delay:${i * 100}ms">
+                                    <div class="result-header">
+                                        <div class="flex" style="align-items:center;gap:12px">
+                                            <div style="width:40px;height:40px;border-radius:50%;background:${colors[i % colors.length].bg};display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:0.875rem">
+                                                ${i + 1}
+                                            </div>
+                                            <div>
+                                                <span class="result-name">${i === 0 && election.total_votes > 0 ? '🏆 ' : ''}${escapeHtml(r.name)}</span>
+                                                <div class="text-muted" style="font-size:0.75rem">${escapeHtml(r.party || 'Independent')}</div>
+                                            </div>
+                                        </div>
+                                        <span>
+                                            <span class="result-votes" style="font-size:1.125rem">${r.votes}</span>
+                                            <span class="result-percentage">(${r.percentage}%)</span>
+                                        </span>
+                                    </div>
+                                    <div class="progress-bar" style="height:10px">
+                                        <div class="progress-fill" style="width:${r.percentage}%;background:${colors[i % colors.length].bg}"></div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                // Render charts
+                renderCharts(results, colors);
+
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading results</div><div class="empty-text">${err.error || 'Please try again'}</div></div>`;
+            }
+        }
+
+        function renderCharts(results, colors) {
+            // Doughnut
+            const dCtx = document.getElementById('doughnutChart');
+            if (dCtx) {
+                if (doughnutChart) doughnutChart.destroy();
+                doughnutChart = new Chart(dCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: results.map(r => r.name),
+                        datasets: [{
+                            data: results.map(r => r.votes),
+                            backgroundColor: results.map((_, i) => colors[i % colors.length].bg),
+                            borderColor: results.map((_, i) => colors[i % colors.length].border),
+                            borderWidth: 2,
+                            hoverOffset: 12
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '55%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 }, padding: 16, usePointStyle: true }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Bar
+            const bCtx = document.getElementById('barChart');
+            if (bCtx) {
+                if (barChart) barChart.destroy();
+                barChart = new Chart(bCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: results.map(r => r.name),
+                        datasets: [{
+                            label: 'Votes',
+                            data: results.map(r => r.votes),
+                            backgroundColor: results.map((_, i) => colors[i % colors.length].bg),
+                            borderColor: results.map((_, i) => colors[i % colors.length].border),
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(99,102,241,0.06)' },
+                                ticks: { color: '#94a3b8', font: { family: 'Inter' } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

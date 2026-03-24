@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VoteSecure AI Voter Portal — Cast your vote securely with biometric verification">
+    <title>VoteSecure AI — Voter Portal</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="/voter" class="navbar-brand">
+                <span class="brand-icon">🛡️</span>
+                VoteSecure AI
+            </a>
+            <ul class="navbar-nav">
+                <li><a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a></li>
+                <li><a href="#" onclick="showSection('elections')">Elections</a></li>
+                <li><a href="#" onclick="showSection('results')">Results</a></li>
+                <li><a href="#" onclick="showSection('blockchain')">Blockchain</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <div class="user-badge" id="userBadge">
+                    <span class="avatar" id="userAvatar">V</span>
+                    <span id="userName">Voter</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container" style="padding-bottom: 60px;">
+
+        <!-- ===== DASHBOARD SECTION ===== -->
+        <div id="section-dashboard" class="section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Voter Dashboard</h1>
+                    <p class="page-subtitle">Your secure voting portal</p>
+                </div>
+            </div>
+
+            <div class="grid-4 stagger" id="statsCards">
+                <div class="card stat-card">
+                    <div class="stat-icon primary">🗳️</div>
+                    <div class="stat-value" id="statActiveElections">-</div>
+                    <div class="stat-label">Active Elections</div>
+                    <div class="stat-glow primary"></div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon success">✅</div>
+                    <div class="stat-value" id="statVoted">-</div>
+                    <div class="stat-label">Votes Cast</div>
+                    <div class="stat-glow success"></div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon accent">🔐</div>
+                    <div class="stat-value" id="statVerified">-</div>
+                    <div class="stat-label">Identity</div>
+                    <div class="stat-glow accent"></div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon warning">🔏</div>
+                    <div class="stat-value" id="statFingerprint">-</div>
+                    <div class="stat-label">Biometric</div>
+                    <div class="stat-glow warning"></div>
+                </div>
+            </div>
+
+            <!-- Fingerprint Enrollment -->
+            <div class="card mt-24" id="fpEnrollCard" style="display:none">
+                <div class="card-header">
+                    <h3 class="card-title">🔏 Enroll Your Fingerprint</h3>
+                </div>
+                <div class="card-body" style="text-align:center">
+                    <p class="text-muted mb-16">To vote, you need to enroll your fingerprint for biometric verification.</p>
+                    <div class="fingerprint-scanner" id="fpScanner">
+                        <span class="fp-icon">🔏</span>
+                        <div class="scan-line" style="display:none"></div>
+                    </div>
+                    <div class="form-file-input" style="max-width:400px;margin:16px auto">
+                        <input type="file" id="fpEnrollFile" accept="image/*" onchange="handleFpEnroll()">
+                        <span class="file-icon">📤</span>
+                        <div class="file-text">
+                            <strong>Upload fingerprint image</strong><br>
+                            PNG, JPG, BMP supported
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card mt-24">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Voting Activity</h3>
+                </div>
+                <div class="card-body" id="recentActivity">
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">No recent activity</div>
+                        <div class="empty-text">Your voting history will appear here</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ELECTIONS SECTION ===== -->
+        <div id="section-elections" class="section hidden">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Active Elections</h1>
+                    <p class="page-subtitle">Cast your vote in ongoing elections</p>
+                </div>
+            </div>
+            <div id="electionsContainer">
+                <div class="empty-state">
+                    <div class="empty-icon">🗳️</div>
+                    <div class="empty-title">No active elections</div>
+                    <div class="empty-text">Check back when an election is in progress</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== RESULTS SECTION ===== -->
+        <div id="section-results" class="section hidden">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Election Results</h1>
+                    <p class="page-subtitle">View real-time election statistics</p>
+                </div>
+                <select class="form-control" style="width:auto;min-width:250px" id="resultElectionSelect" onchange="loadElectionResults()">
+                    <option value="">Select an election</option>
+                </select>
+            </div>
+            <div id="resultsContainer">
+                <div class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <div class="empty-title">Select an election</div>
+                    <div class="empty-text">Choose an election from the dropdown to view results</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCKCHAIN SECTION ===== -->
+        <div id="section-blockchain" class="section hidden">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Blockchain Ledger</h1>
+                    <p class="page-subtitle">Transparent & immutable vote records</p>
+                </div>
+                <button class="btn btn-primary" onclick="loadBlockchain()">
+                    🔄 Verify Chain
+                </button>
+            </div>
+            <div class="card" id="chainStatus">
+                <div class="card-body flex-center" style="padding:40px">
+                    <span class="spinner-lg spinner"></span>
+                </div>
+            </div>
+            <div class="mt-24" id="blockchainContainer"></div>
+        </div>
+    </div>
+
+    <!-- Vote Modal -->
+    <div class="modal-overlay" id="voteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="voteModalTitle">Confirm Your Vote</h3>
+                <button class="modal-close" onclick="closeModal('voteModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="voteModalBody" style="text-align:center;">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('voteModal')">Cancel</button>
+                <button class="btn btn-success btn-lg" id="confirmVoteBtn" onclick="confirmVote()">
+                    ✅ Confirm Vote
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        // ---- Auth Check ----
+        if (!api.isLoggedIn()) {
+            window.location.href = '/';
+        }
+        if (api.isAdmin()) {
+            window.location.href = '/admin';
+        }
+
+        // Update user info in navbar
+        if (api.user) {
+            document.getElementById('userName').textContent = api.user.full_name || api.user.username;
+            document.getElementById('userAvatar').textContent = (api.user.full_name || 'V')[0].toUpperCase();
+        }
+
+        // ---- Section Navigation ----
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`section-${name}`).classList.remove('hidden');
+            document.querySelectorAll('.navbar-nav a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (name === 'dashboard') loadDashboard();
+            if (name === 'elections') loadElections();
+            if (name === 'results') loadResultsPage();
+            if (name === 'blockchain') loadBlockchain();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        async function handleLogout() {
+            await api.logout();
+            window.location.href = '/';
+        }
+
+        // ---- Dashboard ----
+        async function loadDashboard() {
+            try {
+                const stats = await api.getDashboardStats();
+                document.getElementById('statActiveElections').textContent = stats.active_elections;
+                document.getElementById('statVoted').textContent = stats.elections_voted;
+                document.getElementById('statVerified').textContent = stats.is_verified ? '✓ Verified' : '✕ Pending';
+                document.getElementById('statFingerprint').textContent = stats.has_fingerprint ? '✓ Enrolled' : '✕ None';
+
+                // Show enrollment card if no fingerprint
+                document.getElementById('fpEnrollCard').style.display = stats.has_fingerprint ? 'none' : 'block';
+
+                // Recent votes
+                const container = document.getElementById('recentActivity');
+                if (stats.recent_votes && stats.recent_votes.length > 0) {
+                    container.innerHTML = stats.recent_votes.map(v => `
+                        <div class="flex-between" style="padding:12px 0; border-bottom:1px solid var(--border-color)">
+                            <div>
+                                <div style="font-weight:600">Election #${v.election_id}</div>
+                                <div class="text-muted" style="font-size:0.8rem">${formatDate(v.timestamp)}</div>
+                            </div>
+                            <div>
+                                <span class="badge badge-success">Recorded</span>
+                                ${v.block_hash ? `<code style="font-size:0.65rem;color:var(--text-accent);margin-left:8px">${v.block_hash}</code>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                showToast('Failed to load dashboard', 'error');
+            }
+        }
+
+        // ---- Fingerprint Enrollment ----
+        async function handleFpEnroll() {
+            const file = document.getElementById('fpEnrollFile').files[0];
+            if (!file) return;
+
+            const scanner = document.getElementById('fpScanner');
+            scanner.classList.add('scanning');
+            scanner.querySelector('.scan-line').style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('fingerprint', file);
+                await api.enrollFingerprint(formData);
+                
+                scanner.classList.remove('scanning');
+                scanner.classList.add('success');
+                scanner.querySelector('.scan-line').style.display = 'none';
+                showToast('Fingerprint enrolled successfully!', 'success');
+                
+                setTimeout(() => loadDashboard(), 1000);
+            } catch (err) {
+                scanner.classList.remove('scanning');
+                scanner.classList.add('error');
+                scanner.querySelector('.scan-line').style.display = 'none';
+                showToast(err.error || 'Fingerprint enrollment failed', 'error');
+            }
+        }
+
+        // ---- Elections ----
+        let selectedCandidate = null;
+        let selectedElection = null;
+
+        async function loadElections() {
+            const container = document.getElementById('electionsContainer');
+            container.innerHTML = '<div class="flex-center" style="padding:60px"><span class="spinner-lg spinner"></span></div>';
+
+            try {
+                const elections = await api.getActiveElections();
+                if (!elections.length) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🗳️</div>
+                            <div class="empty-title">No active elections</div>
+                            <div class="empty-text">Check back when an election is in progress</div>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = elections.map(election => `
+                    <div class="card mb-24 animate-slide-up">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">${escapeHtml(election.title)}</h3>
+                                <p class="text-muted" style="font-size:0.8rem;margin-top:4px">
+                                    ${formatDate(election.start_date)} — ${formatDate(election.end_date)}
+                                </p>
+                            </div>
+                            ${election.has_voted 
+                                ? '<span class="badge badge-success">✓ Voted</span>'
+                                : '<span class="badge badge-primary">Open</span>'
+                            }
+                        </div>
+                        <div class="card-body">
+                            ${election.description ? `<p class="text-muted mb-16" style="font-size:0.875rem">${escapeHtml(election.description)}</p>` : ''}
+                            ${election.has_voted 
+                                ? '<p class="text-success" style="font-weight:600;text-align:center;padding:20px">✅ You have already cast your vote in this election</p>'
+                                : `<div class="grid-3 stagger" id="candidates-${election.id}">
+                                    ${election.candidates.map(c => `
+                                        <div class="card candidate-card" 
+                                             onclick="selectCandidate(${c.id}, ${election.id}, this)"
+                                             id="candidate-card-${c.id}">
+                                            <div style="width:80px;height:80px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:2rem;color:white;font-weight:700">
+                                                ${c.image_path 
+                                                    ? `<img src="${c.image_path}" class="candidate-img" alt="${escapeHtml(c.name)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">`
+                                                    : c.name[0].toUpperCase()
+                                                }
+                                            </div>
+                                            <div class="candidate-name">${escapeHtml(c.name)}</div>
+                                            <div class="candidate-party">${escapeHtml(c.party || 'Independent')}</div>
+                                            <div class="vote-check">✓</div>
+                                        </div>
+                                    `).join('')}
+                                  </div>
+                                  <div class="text-center mt-24">
+                                      <button class="btn btn-primary btn-lg" 
+                                              onclick="openVoteConfirmation(${election.id})"
+                                              id="voteBtn-${election.id}" disabled>
+                                          🗳️ Cast Your Vote
+                                      </button>
+                                  </div>`
+                            }
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading elections</div></div>`;
+                showToast(err.error || 'Failed to load elections', 'error');
+            }
+        }
+
+        function selectCandidate(candidateId, electionId, el) {
+            // Deselect others in same election
+            document.querySelectorAll(`#candidates-${electionId} .candidate-card`).forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedCandidate = candidateId;
+            selectedElection = electionId;
+            
+            const btn = document.getElementById(`voteBtn-${electionId}`);
+            if (btn) btn.disabled = false;
+        }
+
+        function openVoteConfirmation(electionId) {
+            if (!selectedCandidate || selectedElection !== electionId) {
+                showToast('Please select a candidate first', 'warning');
+                return;
+            }
+
+            const card = document.getElementById(`candidate-card-${selectedCandidate}`);
+            const name = card.querySelector('.candidate-name').textContent;
+            const party = card.querySelector('.candidate-party').textContent;
+
+            document.getElementById('voteModalBody').innerHTML = `
+                <div style="margin-bottom:24px">
+                    <div style="width:80px;height:80px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:2rem;color:white;font-weight:700">
+                        ${name[0]}
+                    </div>
+                    <h3 style="font-size:1.25rem;font-weight:700">${escapeHtml(name)}</h3>
+                    <p class="text-muted">${escapeHtml(party)}</p>
+                </div>
+                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius-md);padding:16px;font-size:0.875rem;color:var(--warning-400)">
+                    ⚠️ This action cannot be undone. Your vote will be recorded on the blockchain permanently.
+                </div>
+            `;
+
+            openModal('voteModal');
+        }
+
+        async function confirmVote() {
+            const btn = document.getElementById('confirmVoteBtn');
+            btn.innerHTML = '<span class="spinner"></span> Recording on blockchain...';
+            btn.disabled = true;
+
+            try {
+                const data = await api.castVote(selectedCandidate, selectedElection);
+                closeModal('voteModal');
+                showToast('🎉 Vote cast successfully! Block hash: ' + (data.block_hash || 'N/A').substring(0, 16) + '...', 'success');
+                selectedCandidate = null;
+                selectedElection = null;
+                loadElections();
+            } catch (err) {
+                const msg = err.reasons ? err.reasons.join(', ') : (err.error || 'Vote failed');
+                showToast(msg, 'error');
+            } finally {
+                btn.innerHTML = '✅ Confirm Vote';
+                btn.disabled = false;
+            }
+        }
+
+        // ---- Results ----
+        let resultsChart = null;
+
+        async function loadResultsPage() {
+            try {
+                const elections = await api.getAllElections();
+                const select = document.getElementById('resultElectionSelect');
+                select.innerHTML = '<option value="">Select an election</option>';
+                elections.forEach(e => {
+                    select.innerHTML += `<option value="${e.id}">${escapeHtml(e.title)} (${e.status})</option>`;
+                });
+            } catch(err) {
+                showToast('Failed to load elections', 'error');
+            }
+        }
+
+        async function loadElectionResults() {
+            const electionId = document.getElementById('resultElectionSelect').value;
+            const container = document.getElementById('resultsContainer');
+
+            if (!electionId) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Select an election</div></div>`;
+                return;
+            }
+
+            container.innerHTML = '<div class="flex-center" style="padding:60px"><span class="spinner-lg spinner"></span></div>';
+
+            try {
+                const data = await api.getResults(electionId);
+                const { election, results } = data;
+
+                container.innerHTML = `
+                    <div class="grid-4 stagger mb-24">
+                        <div class="card stat-card">
+                            <div class="stat-icon primary">🗳️</div>
+                            <div class="stat-value">${election.total_votes}</div>
+                            <div class="stat-label">Total Votes</div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon success">👥</div>
+                            <div class="stat-value">${election.total_voters}</div>
+                            <div class="stat-label">Registered Voters</div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon accent">📈</div>
+                            <div class="stat-value">${election.turnout}%</div>
+                            <div class="stat-label">Turnout</div>
+                        </div>
+                        <div class="card stat-card">
+                            <div class="stat-icon warning">🏆</div>
+                            <div class="stat-value">${results.length > 0 ? escapeHtml(results[0].name) : 'N/A'}</div>
+                            <div class="stat-label">Leading</div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">📊 Vote Distribution</h3></div>
+                            <div class="card-body">
+                                <canvas id="resultsChart" height="300"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">📋 Detailed Results</h3></div>
+                            <div class="card-body">
+                                ${results.map((r, i) => `
+                                    <div class="result-item">
+                                        <div class="result-header">
+                                            <span class="result-name">${i === 0 ? '🏆 ' : ''}${escapeHtml(r.name)} <span class="text-muted" style="font-weight:400">(${escapeHtml(r.party || 'Ind.')})</span></span>
+                                            <span>
+                                                <span class="result-votes">${r.votes} votes</span>
+                                                <span class="result-percentage">(${r.percentage}%)</span>
+                                            </span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill ${i === 0 ? 'primary' : i === 1 ? 'success' : 'warning'}" style="width:${r.percentage}%"></div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Draw chart
+                const ctx = document.getElementById('resultsChart').getContext('2d');
+                if (resultsChart) resultsChart.destroy();
+
+                const colors = [
+                    'rgba(99, 102, 241, 0.8)', 'rgba(34, 197, 94, 0.8)', 'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)', 'rgba(6, 182, 212, 0.8)', 'rgba(139, 92, 246, 0.8)'
+                ];
+                const borderColors = [
+                    'rgb(99, 102, 241)', 'rgb(34, 197, 94)', 'rgb(245, 158, 11)',
+                    'rgb(239, 68, 68)', 'rgb(6, 182, 212)', 'rgb(139, 92, 246)'
+                ];
+
+                resultsChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: results.map(r => r.name),
+                        datasets: [{
+                            data: results.map(r => r.votes),
+                            backgroundColor: colors.slice(0, results.length),
+                            borderColor: borderColors.slice(0, results.length),
+                            borderWidth: 2,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 }, padding: 16 }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            } catch(err) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading results</div></div>`;
+            }
+        }
+
+        // ---- Blockchain ----
+        async function loadBlockchain() {
+            try {
+                const data = await api.verifyBlockchain();
+                
+                document.getElementById('chainStatus').innerHTML = `
+                    <div class="card-body">
+                        <div class="flex-between">
+                            <div>
+                                <h3 style="font-size:1.25rem;font-weight:700">Chain Integrity: 
+                                    <span class="${data.is_valid ? 'text-success' : 'text-danger'}">
+                                        ${data.is_valid ? '✅ VERIFIED' : '❌ BROKEN'}
+                                    </span>
+                                </h3>
+                                <p class="text-muted mt-8">${data.message} • ${data.chain_length} total blocks</p>
+                            </div>
+                            <span class="badge ${data.is_valid ? 'badge-success' : 'badge-danger'}">
+                                ${data.is_valid ? 'Secure' : 'Compromised'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                const container = document.getElementById('blockchainContainer');
+                if (data.chain && data.chain.length > 0) {
+                    container.innerHTML = `
+                        <div class="blockchain-chain">
+                            ${data.chain.map((block, i) => `
+                                ${i > 0 ? '<div class="chain-link">⛓️</div>' : ''}
+                                <div class="block-item card">
+                                    <div class="block-index">Block #${block.index}</div>
+                                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">${formatDate(block.timestamp)}</div>
+                                    <div class="block-hash" title="${block.hash}">
+                                        ${block.hash.substring(0, 20)}...
+                                    </div>
+                                    <div style="font-size:0.6875rem;color:var(--text-muted);margin-top:6px">
+                                        Nonce: ${block.nonce}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch(err) {
+                showToast('Failed to verify blockchain', 'error');
+            }
+        }
+
+        // Initial load
+        loadDashboard();
+    </script>
+</body>
+</html>

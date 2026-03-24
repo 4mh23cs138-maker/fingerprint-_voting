@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoteSecure AI — Secure Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body, html {
+            margin: 0; padding: 0; min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Abstract Background */
+        .bg-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .shape {
+            position: absolute;
+            filter: blur(80px);
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+        .shape-1 { width: 500px; height: 500px; background: #4f46e5; top: -100px; left: -100px; }
+        .shape-2 { width: 400px; height: 400px; background: #0ea5e9; bottom: -100px; right: -50px; animation-delay: -5s; }
+        .shape-3 { width: 600px; height: 600px; background: #7c3aed; top: 30%; left: 40%; transform: translate(-50%, -50%); opacity: 0.3; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translateY(0) scale(1); }
+            100% { transform: translateY(-50px) scale(1.1); }
+        }
+
+        .auth-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 48px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: inline-block;
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+        }
+        .logo-text {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo-sub {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            margin-top: 8px;
+        }
+
+        /* Role Switcher */
+        .role-switch {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .role-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .role-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .role-btn:not(.active):hover {
+            color: #e2e8f0;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #cbd5e1;
+        }
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 12px;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-voter-theme {
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+        }
+        .btn-admin-theme {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+        }
+
+        .btn-submit:hover { transform: translateY(-2px); filter: brightness(110%); }
+        .btn-submit:active { transform: translateY(0); }
+
+        .demo-creds {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: #64748b;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Toast logic */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 16px 24px; border-radius: 12px; color: white; font-weight: 600; animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.4s; }
+        
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <div class="auth-card" id="mainCard">
+        <div class="logo-container">
+            <div class="logo-icon" id="headerIcon">🗳️</div>
+            <h1 class="logo-text">VoteSecure AI</h1>
+            <p class="logo-sub" id="headerSub">Log in to cast your secure vote</p>
+        </div>
+
+        <div class="role-switch">
+            <button class="role-btn active" id="btnRoleVoter" onclick="switchRole('voter')">
+                <span style="font-size: 1.1em;">👤</span> Voter Access
+            </button>
+            <button class="role-btn" id="btnRoleAdmin" onclick="switchRole('admin')">
+                <span style="font-size: 1.1em;">🛡️</span> Administrator
+            </button>
+        </div>
+
+        <form id="authForm" onsubmit="handleLogin(event)">
+            <input type="hidden" id="currentRole" value="voter">
+            
+            <div class="form-group">
+                <label class="form-label" id="usernameLabel">Voter ID or Username</label>
+                <input type="text" class="form-control" id="loginUsername" placeholder="e.g. testvoter" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="btn-submit btn-voter-theme" id="submitBtn">
+                Sign In to Vote
+            </button>
+
+            <div class="demo-creds" id="demoText">
+                Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">testvoter / voter123</span>
+            </div>
+        </form>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script>
+        // Check active sessions
+        if (api.isLoggedIn()) {
+            window.location.href = api.isAdmin() ? '/admin' : '/voter';
+        }
+
+        function createToast(msg, type) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.transform = 'translateX(120%)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 400); 
+            }, 3000);
+        }
+
+        function switchRole(role) {
+            document.getElementById('currentRole').value = role;
+            
+            // Update Buttons
+            document.getElementById('btnRoleVoter').classList.toggle('active', role === 'voter');
+            document.getElementById('btnRoleAdmin').classList.toggle('active', role === 'admin');
+            
+            // Update UI Details
+            const submitBtn = document.getElementById('submitBtn');
+            const icon = document.getElementById('headerIcon');
+            const sub = document.getElementById('headerSub');
+            const userLabel = document.getElementById('usernameLabel');
+            const demoText = document.getElementById('demoText');
+            
+            // Clear inputs securely
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            
+            if (role === 'admin') {
+                submitBtn.className = 'btn-submit btn-admin-theme';
+                submitBtn.innerHTML = 'Access Admin Dashboard';
+                icon.innerHTML = '🛡️';
+                sub.innerHTML = 'System administration portal';
+                userLabel.innerHTML = 'Admin Username';
+                document.getElementById('loginUsername').placeholder = 'e.g. admin';
+                demoText.innerHTML = 'Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">admin / admin123</span>';
+            } else {
+                submitBtn.className = 'btn-submit btn-voter-theme';
+                submitBtn.innerHTML = 'Sign In to Vote';
+                icon.innerHTML = '🗳️';
+                sub.innerHTML = 'Log in to cast your secure vote';
+                userLabel.innerHTML = 'Voter ID or Username';
+                document.getElementById('loginUsername').placeholder = 'e.g. testvoter';
+                demoText.innerHTML = 'Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">testvoter / voter123</span>';
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const role = document.getElementById('currentRole').value;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="spinner-icon"></span> Authenticating...';
+            btn.disabled = true;
+
+            const usernameField = document.getElementById('loginUsername').value;
+            const passwordField = document.getElementById('loginPassword').value;
+
+            try {
+                const data = await api.login(usernameField, passwordField);
+                
+                // Extra security check (optional, matching role to intent)
+                if (role === 'admin' && data.user.role !== 'admin') {
+                    throw { error: "Access Denied: You do not have administrator privileges." };
+                }
+
+                createToast(`Welcome, ${data.user.full_name}!`, 'success');
+                
+                // Transition effect
+                document.getElementById('mainCard').style.transform = 'scale(0.95)';
+                document.getElementById('mainCard').style.opacity = '0';
+                
+                setTimeout(() => {
+                    window.location.href = data.user.role === 'admin' ? '/admin' : '/voter';
+                }, 600);
+            } catch (err) {
+                createToast(err.error || 'Authentication failed. Please check your credentials.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                // Shake effect
+                const card = document.getElementById('mainCard');
+                card.classList.add('shake');
+                setTimeout(() => card.classList.remove('shake'), 400);
+            }
+        }
+    </script>
+</body>
+</html>
