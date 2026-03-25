@@ -8,7 +8,12 @@ load_dotenv()
 class Config:
     """Base configuration."""
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///voting_system.db')
+    # Ensure PostgreSQL is used instead of Postgres for SQLAlchemy
+    db_url = os.environ.get('DATABASE_URL', 'sqlite:///voting_system.db')
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    
+    SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT
@@ -22,8 +27,11 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
     
-    # Upload folders
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    # Upload folders (Use /tmp on Vercel)
+    is_vercel = os.environ.get('VERCEL') == '1'
+    base_upload = '/tmp' if is_vercel else os.path.dirname(os.path.abspath(__file__))
+    
+    UPLOAD_FOLDER = os.path.join(base_upload, 'uploads')
     FINGERPRINT_FOLDER = os.path.join(UPLOAD_FOLDER, 'fingerprints')
     CANDIDATE_FOLDER = os.path.join(UPLOAD_FOLDER, 'candidates')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

@@ -141,6 +141,11 @@ def register():
     # Generate OTP secret
     otp_secret = pyotp.random_base32()
     
+    # Get role, restrict to valid roles and default to voter
+    role = data.get('role', 'voter').strip().lower()
+    if role not in ['voter', 'admin']:
+        role = 'voter'
+
     # Create user
     user = User(
         username=username,
@@ -149,7 +154,7 @@ def register():
         full_name=full_name,
         phone=phone,
         national_id=national_id,
-        role='voter',
+        role=role,
         fingerprint_hash=fingerprint_hash,
         fingerprint_template=fingerprint_template,
         otp_secret=otp_secret,

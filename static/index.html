@@ -71,6 +71,7 @@
             margin: 0;
             background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .logo-sub {
@@ -259,6 +260,48 @@
             <div class="demo-creds" id="demoText">
                 Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">testvoter / voter123</span>
             </div>
+            
+            <p id="registerLinkContainer" style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #94a3b8;">
+                <span id="registerLinkText">Don't have an account? </span><a href="#" onclick="toggleRegister(true); return false;" style="color: #6366f1; text-decoration: none;">Register here</a>
+            </p>
+        </form>
+
+        <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" id="regUsername" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="regEmail" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="regPassword" required minlength="6">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="regFullName" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" id="regPhone">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">National ID</label>
+                <input type="text" class="form-control" id="regNationalId" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">Fingerprint (Optional)</label>
+                <input type="file" class="form-control" id="regFingerprint" accept=".png,.jpg,.jpeg">
+            </div>
+            
+            <button type="submit" class="btn-submit btn-voter-theme" id="regSubmitBtn">
+                Register
+            </button>
+            <p style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #94a3b8;">
+                Already have an account? <a href="#" onclick="toggleRegister(false); return false;" style="color: #6366f1; text-decoration: none;">Sign In</a>
+            </p>
         </form>
     </div>
 
@@ -308,6 +351,9 @@
                 userLabel.innerHTML = 'Admin Username';
                 document.getElementById('loginUsername').placeholder = 'e.g. admin';
                 demoText.innerHTML = 'Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">admin / admin123</span>';
+                document.getElementById('registerLinkText').innerHTML = "Don't have an admin account? ";
+                document.getElementById('regSubmitBtn').className = 'btn-submit btn-admin-theme';
+                document.getElementById('regSubmitBtn').innerHTML = 'Register as Administrator';
             } else {
                 submitBtn.className = 'btn-submit btn-voter-theme';
                 submitBtn.innerHTML = 'Sign In to Vote';
@@ -316,6 +362,72 @@
                 userLabel.innerHTML = 'Voter ID or Username';
                 document.getElementById('loginUsername').placeholder = 'e.g. testvoter';
                 demoText.innerHTML = 'Demo Credentials:<br><span style="color:#94a3b8; font-weight:500;">testvoter / voter123</span>';
+                document.getElementById('registerLinkText').innerHTML = "Don't have an account? ";
+                document.getElementById('regSubmitBtn').className = 'btn-submit btn-voter-theme';
+                document.getElementById('regSubmitBtn').innerHTML = 'Register';
+            }
+        }
+
+        function toggleRegister(showRegister) {
+            const role = document.getElementById('currentRole').value;
+            if (showRegister) {
+                document.getElementById('authForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.querySelector('.role-switch').classList.add('hidden');
+                if (role === 'admin') {
+                    document.getElementById('headerSub').innerText = 'Register for a new admin account';
+                    document.getElementById('headerIcon').innerText = '🛡️';
+                } else {
+                    document.getElementById('headerSub').innerText = 'Register for a new voter account';
+                    document.getElementById('headerIcon').innerText = '🗳️';
+                }
+            } else {
+                document.getElementById('authForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.querySelector('.role-switch').classList.remove('hidden');
+                if (role === 'admin') {
+                    document.getElementById('headerSub').innerText = 'System administration portal';
+                    document.getElementById('headerIcon').innerText = '🛡️';
+                } else {
+                    document.getElementById('headerSub').innerText = 'Log in to cast your secure vote';
+                    document.getElementById('headerIcon').innerText = '🗳️';
+                }
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('regSubmitBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="spinner-icon"></span> Registering...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('role', document.getElementById('currentRole').value);
+            formData.append('username', document.getElementById('regUsername').value);
+            formData.append('email', document.getElementById('regEmail').value);
+            formData.append('password', document.getElementById('regPassword').value);
+            formData.append('full_name', document.getElementById('regFullName').value);
+            formData.append('phone', document.getElementById('regPhone').value);
+            formData.append('national_id', document.getElementById('regNationalId').value);
+            
+            const fpFile = document.getElementById('regFingerprint').files[0];
+            if (fpFile) {
+                formData.append('fingerprint', fpFile);
+            }
+
+            try {
+                await api.register(formData);
+                createToast('Registration successful! Awaiting admin verification.', 'success');
+                setTimeout(() => toggleRegister(false), 2000);
+            } catch (err) {
+                let msg = err.error || 'Registration failed.';
+                if (Array.isArray(msg)) msg = msg.join(', ');
+                createToast(msg, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 
