@@ -8,8 +8,11 @@ load_dotenv()
 class Config:
     """Base configuration."""
     SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+    is_vercel = os.environ.get('VERCEL') == '1'
+    
     # Ensure PostgreSQL is used instead of Postgres for SQLAlchemy
-    db_url = os.environ.get('DATABASE_URL', 'sqlite:///voting_system.db')
+    default_db = 'sqlite:////tmp/voting_system.db' if is_vercel else 'sqlite:///voting_system.db'
+    db_url = os.environ.get('DATABASE_URL', default_db)
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     
